@@ -59,6 +59,11 @@ services:
       start_period: 30s
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-earthquakes-live}
+      PRODUCER_STATE_PATH: /var/lib/observatorio/publication-state.sqlite3
+      USGS_POLL_INTERVAL_SECONDS: ${USGS_POLL_INTERVAL_SECONDS:-60}
+    volumes:
+      - producer_state:/var/lib/observatorio
     depends_on:
       kafka:
         condition: service_healthy
@@ -115,3 +120,4 @@ services:
 volumes:
   kafka_data:
   postgres_data:
+  producer_state:
