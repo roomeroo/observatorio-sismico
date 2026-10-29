@@ -25,6 +25,13 @@ Traceability: `docs/ENUNCIADO (1).md` §2, §9, §12; `docs/README (1).md` §3�
 - **WHEN** Compose starts them
 - **THEN** each remains a distinct service with its own start command and runtime role
 
+#### Scenario: Initial Compose baseline is inspected
+
+- **GIVEN** the initial Compose baseline has been built and started
+- **WHEN** the user inspects Compose's configured services and running containers
+- **THEN** exactly the five required backend roles are configured as distinct services
+- **AND** all five service containers remain running without requiring the frontend or ngrok
+
 ### Requirement: [NF-02] Preserve the required technology and hosting architecture
 
 The architecture MUST use Python/aiokafka, Apache Kafka, PostgreSQL, Python/FastAPI, and Angular/Leaflet. Publish the SPA through Netlify and expose the API through ngrok HTTPS. Spark, Flink, Kubernetes, machine learning, and a permanent cloud server are not required.
@@ -58,6 +65,19 @@ Traceability: `docs/ENUNCIADO (1).md` §2, §9, §12; `docs/README (1).md` §3; 
 - **WHEN** their containers are restarted
 - **THEN** PostgreSQL's persisted data remains available and Kafka retention remains bounded by its configured policy
 
+#### Scenario: Fresh checkout has the required runtime configuration
+
+- **GIVEN** the project is checked out without a developer-specific `.env`
+- **WHEN** the user follows the documented Compose startup procedure
+- **THEN** a credential-free example environment file and database initialization are available
+- **AND** dependencies and service images are pinned sufficiently for the documented reproducible build
+
+#### Scenario: Dependent services start while dependencies are unavailable
+
+- **GIVEN** Kafka or PostgreSQL is not yet healthy
+- **WHEN** a dependent service starts or attempts to connect
+- **THEN** it waits or retries until the dependency is available rather than silently exiting as a successful service
+
 ### Requirement: [NF-05] Restrict and correctly route container network access
 
 Containers MUST communicate through service names and correctly configured Kafka listeners. Uvicorn listens on `0.0.0.0:8000`. Only the API is tunnel-accessible; ngrok targets the API service in Compose or its published host port when running on the host.
@@ -79,6 +99,21 @@ Traceability: `docs/ENUNCIADO (1).md` §2, §9; `docs/README (1).md` §3; `docs/
 - **WHEN** it forwards requests
 - **THEN** it targets the host-published API port
 - **AND** Kafka and PostgreSQL remain unavailable through the public tunnel
+
+#### Scenario: Backend services use Compose service discovery
+
+- **GIVEN** the five backend services are running in the Compose network
+- **WHEN** producer, consumer, and API connect to their required broker or database dependencies
+- **THEN** they use the corresponding Compose service names rather than `localhost`
+- **AND** Kafka advertises an address reachable by its in-network clients
+- **AND** the API listens on `0.0.0.0:8000` inside its container
+
+#### Scenario: API port is published for a host-based tunnel
+
+- **GIVEN** ngrok is run on the host as described in the README
+- **WHEN** Compose publishes the API port for that route
+- **THEN** the host binding is restricted to loopback, preferably `127.0.0.1:8000:8000`
+- **AND** PostgreSQL and Kafka are not published as public tunnel targets
 
 ### Requirement: [NF-06] Configure browser access without exposing credentials
 
