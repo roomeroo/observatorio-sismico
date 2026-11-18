@@ -1,6 +1,132 @@
 <main>
-  <header><p class="eyebrow">BIG DATA · PROYECTO DE AULA</p><h1>Observatorio de actividad sísmica</h1><p>Mapa base, fronteras y eventos en capas independientes.</p></header>
-  <section class="info" aria-live="polite"><strong>{{ mode() }}</strong><p>{{ status() }}</p><p>{{ countriesStatus() }} · {{ count() }} eventos dibujados · {{ omitted() }} omitidos por coordenadas inválidas</p><small>Última lectura UTC: {{ lastRead() }}<br>Generación de la respuesta UTC: {{ generated() }}</small></section>
-  <div class="map" leaflet [leafletOptions]="options" (leafletMapReady)="onMapReady($event)" aria-label="Mapa interactivo de terremotos"></div>
-  <footer><strong>Profundidad</strong><span>🟡 Menos de 70 km</span><span>🟠 70–299,99 km</span><span>🟣 300 km o más</span><span>⚪ No disponible</span><p>Tamaño: escala visual creciente con la magnitud; no representa energía ni área afectada. Sin magnitud: radio mínimo. El mapa base puede desactivarse en el selector de capas.</p><p>Base proporcionada: añade filtros, gráficos, tabla accesible y conclusiones para completar el proyecto.</p></footer>
+  <header>
+    <p class="eyebrow">BIG DATA · PROYECTO DE AULA</p>
+    <h1>Observatorio de actividad sísmica</h1>
+    @if (isReplay()) {
+      <p class="replay-badge" data-testid="replay-badge" role="status">REPRODUCCIÓN · datos históricos reproducidos, no son actividad en vivo</p>
+    }
+  </header>
+
+  @if (api.configError(); as configError) {
+    <div class="banner error" role="alert" data-testid="config-error">{{ configError }}</div>
+  }
+
+  @if (api.failure(); as failure) {
+    <div class="banner error" role="alert" data-testid="failure-banner">
+      <strong>No se puede contactar con la API</strong> ({{ failure.message }}) desde {{ failure.since }} UTC.
+      @if (api.lastSuccessAt(); as last) {
+        Se muestran los últimos datos válidos, leídos el <time [attr.datetime]="last">{{ last }}</time> UTC.
+      } @else {
+        Aún no hay datos.
+      }
+      Se reintentará automáticamente.
+      <button type="button" (click)="retry()">Reintentar ahora</button>
+    </div>
+  }
+
+  @if (api.ingestionOld()) {
+    <div class="banner warn" role="status" data-testid="stale-warning">
+      La última ingesta fue el {{ iso(snapshot()?.health?.last_ingestion) }} UTC (hace más de 15 minutos): los datos pueden estar desactualizados.
+    </div>
+  }
+
+  <section class="panel status" aria-label="Estado del sistema" data-testid="status-panel">
+    <h2>Estado</h2>
+    <dl>
+      <div><dt>API</dt><dd data-testid="api-state">{{ api.failure() ? 'Sin respuesta' : snapshot() ? 'Accesible' : 'Conectando…' }}</dd></div>
+      <div><dt>Último acceso correcto (UTC)</dt><dd data-testid="last-success">{{ api.lastSuccessAt() ?? 'Sin lectura' }}</dd></div>
+      <div>
+        <dt>{{ isReplay() ? 'Carga de la reproducción (UTC)' : 'Última ingesta (UTC)' }}</dt>
+        <dd data-testid="last-ingestion">{{ iso(isReplay() ? snapshot()?.health?.replay_loaded_at : snapshot()?.health?.last_ingestion) }}</dd>
+      </div>
+      <div><dt>Periodo consultado (UTC)</dt><dd data-testid="period">{{ snapshot()?.stats?.filters?.start ?? 'ND' }} → {{ snapshot()?.stats?.filters?.end ?? 'ND' }}</dd></div>
+      <div><dt>Generación de la respuesta</dt><dd>{{ iso(snapshot()?.events?.metadata?.generated) }}</dd></div>
+      <div><dt>Servidor</dt><dd>{{ api.apiUrl() || 'ND' }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel filters" aria-label="Filtros">
+    <h2>Filtros</h2>
+    <div class="grid">
+      <label>Datos
+        <select data-testid="filter-mode" [value]="filters().mode" (change)="onMode($any($event.target).value)">
+          <option value="live">En vivo</option>
+          <option value="replay">Reproducción</option>
+        </select>
+      </label>
+      @if (!isReplay()) {
+        <label>Periodo
+          <select data-testid="filter-range" [value]="filters().range" (change)="onRange($any($event.target).value)">
+            <option value="24h">Últimas 24 h</option>
+            <option value="7d">Últimos 7 días</option>
+            <option value="30d">Últimos 30 días</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </label>
+        @if (filters().range === 'custom') {
+          <label>Desde (UTC)<input type="datetime-local" data-testid="filter-start" [value]="filters().start" (change)="onStart($any($event.target).value)" /></label>
+          <label>Hasta (UTC)<input type="datetime-local" data-testid="filter-end" [value]="filters().end" (change)="onEnd($any($event.target).value)" /></label>
+        }
+      }
+      <label>Magnitud mínima
+        <input type="number" step="0.1" min="-2" max="10" data-testid="filter-minmag" [value]="filters().minMag ?? ''" (change)="onMinMag($any($event.target).value)" />
+      </label>
+      <label>País
+        <select data-testid="filter-country" [value]="filters().country" (change)="onCountry($any($event.target).value)">
+          <option value="">Todos</option>
+          <option value="SIN_PAIS">Sin país asignado</option>
+          @for (c of countries(); track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+        </select>
+      </label>
+      <label>Subregión
+        <select data-testid="filter-subregion" [value]="filters().subregion" (change)="onSubregion($any($event.target).value)">
+          <option value="">Todas</option>
+          @for (s of subregions(); track s) { <option [value]="s">{{ s }}</option> }
+        </select>
+      </label>
+      <button type="button" (click)="resetFilters()">Restablecer</button>
+    </div>
+  </section>
+
+  @if (snapshot(); as snap) {
+    <section class="kpis" aria-label="Resumen">
+      <div class="kpi"><span class="num" data-testid="total-count">{{ snap.stats.total }}</span><span>eventos en el periodo y filtros</span></div>
+      <div class="kpi"><span class="num" data-testid="last24">{{ snap.stats.comparison.last_24h_count }}</span><span>últimas 24 h</span></div>
+      <div class="kpi"><span class="num">{{ snap.stats.comparison.historical_daily_mean.toFixed(2) }}</span><span>media diaria {{ snap.stats.comparison.historical_year }} (M≥4, {{ snap.stats.comparison.historical_days }} días)</span></div>
+      <div class="kpi"><span class="num" data-testid="ratio">{{ ratioText() }}</span><span>24 h frente a la media</span></div>
+    </section>
+    <p class="note">{{ snap.stats.comparison.note }}</p>
+    @if (truncated()) {
+      <p class="banner warn" role="status">Respuesta truncada: se muestran {{ snap.events.metadata.count }} de {{ snap.events.metadata.total }} eventos en mapa y tabla (límite {{ eventsLimit }}). Las estadísticas se calculan en el servidor sobre todos los eventos, no sobre esta muestra.</p>
+    }
+    @if (snap.events.metadata.null_magnitude_excluded > 0) {
+      <p class="note" data-testid="null-mag-note">{{ snap.events.metadata.null_magnitude_excluded }} eventos sin magnitud (ND) no cumplen el filtro de magnitud mínima y se cuentan aparte.</p>
+    }
+  } @else if (!api.failure() && !api.configError()) {
+    <p class="note" data-testid="loading">Cargando datos…</p>
+  }
+
+  <section class="panel" aria-label="Mapa">
+    <h2>Mapa</h2>
+    <app-quake-map [events]="snapshot()?.events ?? null" />
+  </section>
+
+  <section class="panel charts" aria-label="Gráficos">
+    <h2>Análisis</h2>
+    <div class="chart-grid">
+      <app-bar-chart class="wide" testId="chart-hourly" title="Eventos por hora UTC (hora del evento)" [bars]="hourlyBars()" />
+      <app-bar-chart testId="chart-country" title="Eventos por país (máx. 12)" layout="horizontal" [bars]="countryBars()" />
+      <app-bar-chart testId="chart-subregion" title="Eventos por subregión" layout="horizontal" [bars]="subregionBars()" />
+      <app-bar-chart testId="chart-magnitude" title="Distribución de magnitudes (ND = sin magnitud)" [bars]="magnitudeBars()" />
+      <app-bar-chart testId="chart-depth" title="Distribución de profundidades (ND = sin dato)" [bars]="depthBars()" />
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Tabla de eventos">
+    <app-events-table [events]="snapshot()?.events ?? null" />
+  </section>
+
+  <footer>
+    Datos: USGS · Fronteras: Natural Earth (resolución baja: «Sin país asignado» no es un error, es mar o costa fuera del polígono).
+  </footer>
 </main>

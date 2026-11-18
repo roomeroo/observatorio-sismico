@@ -17,10 +17,10 @@ El servicio `consumer` conecta con Kafka y PostgreSQL, pero no se suscribe a nin
 
 El consumidor usará `mode: live` en este cambio; el procesamiento de replay queda fuera de alcance. Se conservará la estructura actual de dependencias y se aplicará el esquema de base de forma compatible con el volumen PostgreSQL existente.
 
-## Decisiones pendientes
+## Decisiones resueltas
 
-- La documentación no define qué hacer con un evento sin `id` o con `updated` ausente o no interpretable: determinar si se rechaza y pone en cuarentena o si existe otra regla, sin fabricar identidad ni versión.
-- La documentación no define cómo distinguir una redelivery idéntica de dos payloads diferentes que comparten `id` y `updated`: no sobrescribir ni descartar uno silenciosamente hasta acordar la regla.
+- Evento sin `id` o con `updated` ausente/inválido: Se rechaza y transfiere a cuarentena (`QUARANTINE`) con motivo explícito (`MISSING_OR_INVALID_ID_OR_UPDATED`), sin inventar identidades ni versiones fallback y sin bloquear la partición.
+- Distinción entre redelivery idéntica y conflicto de payloads con mismo `(event_id, updated)`: Si el hash de contenido/payload es idéntico, se trata como redelivery idempotente (sin duplicar registros). Si el contenido difiere con la misma tupla `(event_id, updated)`, el mensaje entrante se envía a cuarentena con motivo `PAYLOAD_CONFLICT_SAME_VERSION`, preservando la versión previa almacenada y evitando sobreescrituras silenciosas.
 
 ## Capabilities
 

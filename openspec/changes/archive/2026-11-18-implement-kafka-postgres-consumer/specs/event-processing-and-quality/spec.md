@@ -23,6 +23,13 @@ Traceability: `docs/ENUNCIADO (1).md` §5–§7, §11; `docs/FAQ.md` Q13, Q16–
 - **THEN** the original input, rejection reason, and message reference are durably retained before the offset advances
 - **AND** the rejected record is not represented as a valid event
 
+#### Scenario: Event has missing or invalid identity or update timestamp
+
+- **GIVEN** a message contains an event without `id` or with a missing/invalid `updated` timestamp
+- **WHEN** the consumer validates it
+- **THEN** it rejects the message with reason `MISSING_OR_INVALID_ID_OR_UPDATED`
+- **AND** the message is placed in quarantine without generating synthetic identifiers or blocking the queue
+
 #### Scenario: Invalid coordinates are received
 
 - **GIVEN** an event contains coordinates outside valid geographic ranges or otherwise unusable geometry
@@ -84,3 +91,10 @@ Traceability: `docs/ENUNCIADO (1).md` §7, §11; `docs/FAQ.md` Q12–Q15, Q20.
 - **WHEN** the consumer commits that version
 - **THEN** the current state reflects the later version
 - **AND** dependent aggregates can be recalculated from current state or corrected for affected windows
+
+#### Scenario: Conflicting payloads share the same event ID and update timestamp
+
+- **GIVEN** a persisted version exists for `(event_id, updated)`
+- **WHEN** a subsequent message arrives with the same `(event_id, updated)` but a different payload/content hash
+- **THEN** the consumer quarantines the incoming record with reason `PAYLOAD_CONFLICT_SAME_VERSION`
+- **AND** the previously accepted version and current state remain unchanged

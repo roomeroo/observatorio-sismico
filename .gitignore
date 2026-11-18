@@ -1,3 +1,6 @@
 docs/
 .env
 **/__pycache__/
+backend/data/
+frontend/cypress/screenshots/
+frontend/cypress/videos/

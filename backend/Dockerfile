@@ -9,5 +9,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --requirement requirements.txt
 
 COPY observatorio ./observatorio
+COPY tools ./tools
 
 CMD ["python", "-m", "observatorio.producer"]

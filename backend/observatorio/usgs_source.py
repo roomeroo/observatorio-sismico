@@ -39,12 +39,22 @@ def poll_interval_seconds(environ: Mapping[str, str] = os.environ) -> float:
     return interval
 
 
-async def fetch_feed(client: httpx.AsyncClient) -> list[GeoJsonFeature]:
+async def fetch_feed(
+    client: httpx.AsyncClient,
+    capture: dict | None = None,
+) -> list[GeoJsonFeature]:
+    """Fetch and parse the feed. If ``capture`` is given it receives the raw
+    payload (``payload``) and the request latency (``latency_ms``)."""
     started_at = time.perf_counter()
     try:
         response = await client.get(USGS_FEED_URL)
+        if capture is not None:
+            capture["latency_ms"] = int((time.perf_counter() - started_at) * 1000)
         response.raise_for_status()
-        return parse_feed(response.json())
+        payload = response.json()
+        if capture is not None:
+            capture["payload"] = payload
+        return parse_feed(payload)
     finally:
         logging.info(
             "USGS feed request completed in %.3f seconds.",
@@ -62,9 +72,10 @@ def retryable_source_error(error: Exception) -> bool:
 async def fetch_feed_with_retries(
     client: httpx.AsyncClient,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    capture: dict | None = None,
 ) -> list[GeoJsonFeature]:
     return await retry_with_backoff(
-        lambda: fetch_feed(client),
+        lambda: fetch_feed(client, capture),
         "USGS feed request",
         SOURCE_RETRY_ERRORS,
         sleep,
@@ -75,11 +86,14 @@ async def fetch_feed_with_retries(
 async def fetch_feed_or_skip(
     client: httpx.AsyncClient,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    capture: dict | None = None,
 ) -> list[GeoJsonFeature] | None:
     try:
-        return await fetch_feed_with_retries(client, sleep)
+        return await fetch_feed_with_retries(client, sleep, capture)
     except SOURCE_RETRY_ERRORS as error:
         logging.error("Skipping this USGS polling cycle: %s", error)
+        if capture is not None:
+            capture["error"] = f"{type(error).__name__}: {error}"
         return None
 
 
@@ -155,6 +169,36 @@ def earthquake_features(
         eligible.append(feature)
 
     return eligible
+
+
+def exclusion_details(features: list[GeoJsonFeature]) -> list[dict[str, str | None]]:
+    """Features dropped by ``earthquake_features`` with the reason for each."""
+    excluded: list[dict[str, str | None]] = []
+    for feature in features:
+        properties = feature.get("properties")
+        if not isinstance(properties, dict):
+            continue
+        event_id = feature.get("id")
+        event_type = properties.get("type")
+        updated = properties.get("updated")
+        if event_type != "earthquake":
+            reason = f"EVENT_TYPE_{str(event_type).upper()}"
+        elif not isinstance(event_id, str) or not event_id:
+            reason = "MISSING_OR_INVALID_ID"
+        elif isinstance(updated, bool) or not isinstance(updated, int):
+            reason = "MISSING_OR_INVALID_UPDATED"
+        else:
+            continue
+        place = properties.get("place")
+        excluded.append(
+            {
+                "event_id": event_id if isinstance(event_id, str) else None,
+                "reason": reason,
+                "event_type": None if event_type is None else str(event_type),
+                "place": place if isinstance(place, str) else None,
+            }
+        )
+    return excluded
 
 
 async def polling_loop(

@@ -8,14 +8,14 @@ Specify validation, transformation, version persistence, idempotent consumption,
 
 ### Requirement: [F-05] Validate, transform, persist, and quarantine consumed messages
 
-The consumer MUST validate and transform consumed events, preserve the original event and extraction context needed for traceability, and persist accepted data. It MUST durably retain rejected input with its rejection reason and a reference to the original message before advancing past that message. Rejected input MUST NOT be silently discarded or block the whole queue indefinitely.
+The consumer MUST consume the configured live Kafka topic, validate and transform messages under documented rules, preserve the original event and extraction context, and persist accepted data. It MUST durably retain rejected input with its rejection reason and Kafka topic, partition, and offset before advancing past that message. It MUST confirm offsets only after the corresponding PostgreSQL transaction commits. Rejected input MUST NOT be silently discarded or block the whole queue indefinitely.
 
 Priority: Explicitly required.
 Traceability: `docs/ENUNCIADO (1).md` §5–§7, §11; `docs/FAQ.md` Q13, Q16–Q17.
 
 #### Scenario: Valid event is consumed
 
-- **GIVEN** a valid event message is available in Kafka
+- **GIVEN** a valid live event message is available in Kafka
 - **WHEN** the consumer processes it
 - **THEN** it validates and prepares the event and persists the resulting data transactionally
 - **AND** it confirms the Kafka offset only after the database transaction commits
@@ -26,6 +26,13 @@ Traceability: `docs/ENUNCIADO (1).md` §5–§7, §11; `docs/FAQ.md` Q13, Q16–
 - **WHEN** the consumer rejects it
 - **THEN** the original input, rejection reason, and message reference are durably retained before the offset advances
 - **AND** the rejected record is not represented as a valid event
+
+#### Scenario: Event has missing or invalid identity or update timestamp
+
+- **GIVEN** a message contains an event without `id` or with a missing/invalid `updated` timestamp
+- **WHEN** the consumer validates it
+- **THEN** it rejects the message with reason `MISSING_OR_INVALID_ID_OR_UPDATED`
+- **AND** the message is placed in quarantine without generating synthetic identifiers or blocking the queue
 
 #### Scenario: Invalid coordinates are received
 
@@ -53,9 +60,23 @@ Traceability: `docs/ENUNCIADO (1).md` §5–§7, §11; `docs/FAQ.md` Q13, Q16–
 - **WHEN** Kafka delivers the message again after consumer restart
 - **THEN** processing the redelivery does not duplicate its persisted effects
 
+#### Scenario: PostgreSQL is unavailable while processing a message
+
+- **GIVEN** a message is available but PostgreSQL cannot commit its transaction
+- **WHEN** the consumer attempts to persist the event or quarantine record
+- **THEN** it does not confirm the Kafka offset
+- **AND** it can process the message after PostgreSQL becomes available again
+
+#### Scenario: A rejected message is quarantined before its offset advances
+
+- **GIVEN** a Kafka message is rejected by documented validation
+- **WHEN** the consumer records the rejection
+- **THEN** the original input, reason, topic, partition, and offset are committed durably
+- **AND** the offset is confirmed only after that commit
+
 ### Requirement: [F-06] Preserve event versions and maintain one current version
 
-Persistence MUST retain observed versions and expose one current version per event ID. A later version updates current state without erasing history; an older redelivery cannot replace it. Effects MUST be idempotent under at-least-once delivery; a distributed Kafka–PostgreSQL transaction is not required.
+Persistence MUST retain observed event versions and expose one current version per event ID. A later version updates current state without erasing history; an older redelivery cannot replace it. Effects MUST be idempotent under at-least-once delivery; a distributed Kafka–PostgreSQL transaction is not required.
 
 Priority: Explicitly required.
 Traceability: `docs/ENUNCIADO (1).md` §7, §11; `docs/FAQ.md` Q12–Q15, Q20.
@@ -74,6 +95,13 @@ Traceability: `docs/ENUNCIADO (1).md` §7, §11; `docs/FAQ.md` Q12–Q15, Q20.
 - **WHEN** the consumer commits that version
 - **THEN** the current state reflects the later version
 - **AND** dependent aggregates can be recalculated from current state or corrected for affected windows
+
+#### Scenario: Conflicting payloads share the same event ID and update timestamp
+
+- **GIVEN** a persisted version exists for `(event_id, updated)`
+- **WHEN** a subsequent message arrives with the same `(event_id, updated)` but a different payload/content hash
+- **THEN** the consumer quarantines the incoming record with reason `PAYLOAD_CONFLICT_SAME_VERSION`
+- **AND** the previously accepted version and current state remain unchanged
 
 ### Requirement: [F-13] Provide evidence-based data-quality analysis
 
