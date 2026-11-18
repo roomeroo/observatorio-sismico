@@ -101,7 +101,7 @@ class FakeApi {
       hourly,
       magnitude: { bins: [...mags].map(([from, n]) => ({ from, to: from + 1, label: `${from} a <${from + 1}`, count: n })), missing: list.filter((q) => q.mag === null).length },
       depth: { bins: [...depths].map(([label, n]) => ({ from: null, to: null, label, count: n })), missing: list.filter((q) => q.depth === null).length },
-      comparison: { last_24h_count: list.length, historical_year: 2025, historical_count: 18302, historical_days: 365, historical_daily_mean: 50.14, ratio: list.length / 50.14, note: 'El último periodo puede estar incompleto.' },
+      comparison: { last_24h_count: list.length, last_24h_min_mag: 4, historical_year: 2025, historical_count: 18302, historical_days: 365, historical_daily_mean: 50.14, ratio: list.length / 50.14, note: 'El último periodo puede estar incompleto.' },
       missing: { magnitude: list.filter((q) => q.mag === null).length, depth: list.filter((q) => q.depth === null).length, country: list.filter((q) => !q.country_id).length, null_magnitude_excluded_by_min_mag: 0 },
       ...(replay ? { replay_loaded_at: REPLAY_LOADED } : { last_ingestion: this.lastIngestion }),
     };

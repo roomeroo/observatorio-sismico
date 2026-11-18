@@ -224,6 +224,23 @@ class ApiIntegrationTests(unittest.TestCase):
         subs = {c["subregion"]: c["count"] for c in s["by_subregion"]}
         self.assertEqual(subs, {"Testland": 3, "Sin país asignado": 1})
 
+    def test_comparison_counts_recent_events_with_same_magnitude_floor_as_history(self):
+        """Last 24 h must be counted like the 2025 history (M >= 4), never with all magnitudes."""
+        now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        asyncio.run(seed([
+            event("r_small", now_ms - 3_600_000, mag=3.0),
+            event("r_big", now_ms - 7_200_000, mag=4.5),
+            event("r_nomag", now_ms - 1_800_000, mag=None),
+        ]))
+        c = self.client.get("/api/estadisticas", params={"country_id": "ZZZ"}).json()["comparison"]
+        self.assertEqual(c["last_24h_count"], 1)  # only the M 4.5 event
+        self.assertEqual(c["last_24h_min_mag"], 4.0)
+        self.assertEqual(c["historical_min_mag"], 4.0)
+        # a stricter user filter applies to both sides
+        c6 = self.client.get("/api/estadisticas", params={"country_id": "ZZZ", "min_mag": 6}).json()["comparison"]
+        self.assertEqual(c6["last_24h_count"], 0)
+        self.assertEqual(c6["historical_min_mag"], 6.0)
+
     def test_historical_comparison_uses_365_days(self):
         with psycopg.connect(**postgres_connection_parameters(), autocommit=True) as conn:
             for i in range(73):

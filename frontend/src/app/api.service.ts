@@ -50,6 +50,7 @@ export interface StatsResponse {
   depth: { bins: Bin[]; missing: number };
   comparison: {
     last_24h_count: number;
+    last_24h_min_mag: number;
     historical_daily_mean: number;
     historical_year: number;
     historical_days: number;

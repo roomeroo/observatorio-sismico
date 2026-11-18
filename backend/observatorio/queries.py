@@ -264,13 +264,14 @@ async def statistics(conn, f: Filters, now: Optional[datetime] = None) -> dict[s
         )
         depth_missing = (await cur.fetchone())[0]
 
-        # Comparison: last 24 h (same non-time filters) vs 2025 daily mean.
-        last24 = Filters(now - timedelta(hours=24), now, f.min_mag, f.country_id, f.subregion, f.mode)
+        # Comparison: like for like. The 2025 history only holds M >= 4, so the recent
+        # window is counted with the same minimum magnitude and the same geography.
+        hist_min = max(f.min_mag if f.min_mag is not None else 0.0, HISTORICAL_MIN_MAG)
+        last24 = Filters(now - timedelta(hours=24), now, hist_min, f.country_id, f.subregion, f.mode)
         w24, p24 = _where(last24)
         await cur.execute(f"SELECT count(*) FROM {_from(last24)} WHERE {w24}", p24)
         last_24h = (await cur.fetchone())[0]
 
-        hist_min = max(f.min_mag if f.min_mag is not None else 0.0, HISTORICAL_MIN_MAG)
         h_clauses = ["h.mag >= %s", "h.time_utc >= %s", "h.time_utc < %s"]
         h_params: list[Any] = [
             hist_min,
@@ -302,6 +303,7 @@ async def statistics(conn, f: Filters, now: Optional[datetime] = None) -> dict[s
     daily_mean = hist_count / HISTORICAL_DAYS
     comparison = {
         "last_24h_count": last_24h,
+        "last_24h_min_mag": hist_min,
         "historical_year": HISTORICAL_YEAR,
         "historical_count": hist_count,
         "historical_days": HISTORICAL_DAYS,

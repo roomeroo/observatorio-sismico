@@ -101,8 +101,8 @@
         <section class="kpis" aria-label="Resumen">
           <div class="kpi primary"><span class="num" data-testid="total-count">{{ snap.stats.total }}</span><span class="lbl">eventos en el periodo y filtros</span></div>
           @if (!isReplay()) {
-          <div class="kpi"><span class="num" data-testid="last24">{{ snap.stats.comparison.last_24h_count }}</span><span class="lbl">últimas 24 h</span></div>
-          <div class="kpi"><span class="num">{{ snap.stats.comparison.historical_daily_mean.toFixed(2) }}</span><span class="lbl">media diaria {{ snap.stats.comparison.historical_year }}</span></div>
+          <div class="kpi"><span class="num" data-testid="last24">{{ snap.stats.comparison.last_24h_count }}</span><span class="lbl">últimas 24 h (M ≥ {{ snap.stats.comparison.last_24h_min_mag }})</span></div>
+          <div class="kpi"><span class="num">{{ snap.stats.comparison.historical_daily_mean.toFixed(2) }}</span><span class="lbl">media diaria {{ snap.stats.comparison.historical_year }} (M ≥ {{ snap.stats.comparison.last_24h_min_mag }})</span></div>
           <div class="kpi"><span class="num" data-testid="ratio">{{ ratioText() }}</span><span class="lbl">24 h frente a la media</span></div>
         
           }
@@ -111,7 +111,7 @@
           @if (!isReplay()) {
           <section class="card compare" aria-label="Comparación histórica">
             <h2>Últimas 24 h frente a 2025</h2>
-            <div class="cmp-row"><span>Últimas 24 h</span><span class="track"><span class="fill now" [style.width.%]="cmp.last"></span></span><b>{{ snap.stats.comparison.last_24h_count }}</b></div>
+            <div class="cmp-row"><span>24 h (M ≥ {{ snap.stats.comparison.last_24h_min_mag }})</span><span class="track"><span class="fill now" [style.width.%]="cmp.last"></span></span><b>{{ snap.stats.comparison.last_24h_count }}</b></div>
             <div class="cmp-row"><span>Media diaria 2025</span><span class="track"><span class="fill hist" [style.width.%]="cmp.mean"></span></span><b>{{ snap.stats.comparison.historical_daily_mean.toFixed(1) }}</b></div>
             <p class="note">{{ snap.stats.comparison.note }}</p>
           </section>
