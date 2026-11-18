@@ -1,0 +1,16 @@
+# The deployable site is the Angular dashboard in frontend/.
+# The Python backend (Kafka, PostgreSQL, FastAPI) runs via Docker Compose and is
+# not deployed to Netlify; the dashboard reaches it through the URL in
+# frontend/public/config.json.
+[build]
+  base = "frontend"
+  # Install dependencies first if the environment hasn't already (e.g. CLI deploys
+  # from a fresh checkout); Netlify's Git builds install them automatically.
+  command = "(test -x node_modules/.bin/ng || npm ci) && npm run build"
+  publish = "dist/observatorio/browser"
+
+[build.environment]
+  # Angular 20 requires Node ^20.19, ^22.12 or ^24 (package.json engines: 22.12+ or 24).
+  NODE_VERSION = "22"
+  # Cypress is only used for local e2e tests; skip its large binary download on deploys.
+  CYPRESS_INSTALL_BINARY = "0"
