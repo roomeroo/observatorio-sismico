@@ -1,0 +1,7 @@
+SERVICE    STATUS
+api        Up 6 minutes (healthy)
+consumer   Up 6 minutes (healthy)
+kafka      Up 6 minutes (healthy)
+ngrok      Up 6 minutes
+postgres   Up 6 minutes (healthy)
+producer   Up 6 minutes (healthy)

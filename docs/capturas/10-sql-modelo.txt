@@ -1,0 +1,78 @@
+                           Table "observatorio.current_events"
+      Column       |           Type           | Collation | Nullable |      Default      
+-------------------+--------------------------+-----------+----------+-------------------
+ event_id          | text                     |           | not null | 
+ updated           | bigint                   |           | not null | 
+ payload_hash      | text                     |           | not null | 
+ time              | bigint                   |           |          | 
+ time_utc          | timestamp with time zone |           |          | 
+ updated_utc       | timestamp with time zone |           | not null | 
+ mag               | double precision         |           |          | 
+ mag_type          | text                     |           |          | 
+ place             | text                     |           |          | 
+ status            | text                     |           |          | 
+ tsunami           | integer                  |           |          | 
+ sig               | integer                  |           |          | 
+ net               | text                     |           |          | 
+ code              | text                     |           |          | 
+ ids               | text                     |           |          | 
+ sources           | text                     |           |          | 
+ types             | text                     |           |          | 
+ nst               | integer                  |           |          | 
+ dmin              | double precision         |           |          | 
+ rms               | double precision         |           |          | 
+ gap               | double precision         |           |          | 
+ mag_error         | double precision         |           |          | 
+ mag_nst           | integer                  |           |          | 
+ depth_error       | double precision         |           |          | 
+ horizontal_error  | double precision         |           |          | 
+ event_type        | text                     |           |          | 
+ longitude         | double precision         |           | not null | 
+ latitude          | double precision         |           | not null | 
+ depth             | double precision         |           | not null | 
+ original_feature  | jsonb                    |           | not null | 
+ source            | text                     |           | not null | 
+ ingested_at       | timestamp with time zone |           | not null | 
+ mode              | text                     |           | not null | 
+ kafka_topic       | text                     |           | not null | 
+ kafka_partition   | integer                  |           | not null | 
+ kafka_offset      | bigint                   |           | not null | 
+ last_processed_at | timestamp with time zone |           | not null | clock_timestamp()
+ country_id        | text                     |           |          | 
+ geo_ambiguous     | boolean                  |           | not null | false
+Indexes:
+    "current_events_pkey" PRIMARY KEY, btree (event_id)
+    "idx_current_events_country_time" btree (country_id, time_utc)
+    "idx_current_events_mag" btree (mag)
+    "idx_current_events_time_utc" btree (time_utc)
+    "idx_current_events_updated" btree (updated)
+
+                                     List of relations
+    Schema    |              Name               | Type  |    Owner     |       Table        
+--------------+---------------------------------+-------+--------------+--------------------
+ observatorio | current_events_pkey             | index | observatorio | current_events
+ observatorio | dim_country_pkey                | index | observatorio | dim_country
+ observatorio | dim_date_pkey                   | index | observatorio | dim_date
+ observatorio | event_versions_pkey             | index | observatorio | event_versions
+ observatorio | extraction_queries_pkey         | index | observatorio | extraction_queries
+ observatorio | historical_events_pkey          | index | observatorio | historical_events
+ observatorio | idx_current_events_country_time | index | observatorio | current_events
+ observatorio | idx_current_events_mag          | index | observatorio | current_events
+ observatorio | idx_current_events_time_utc     | index | observatorio | current_events
+ observatorio | idx_current_events_updated      | index | observatorio | current_events
+ observatorio | idx_event_versions_time_utc     | index | observatorio | event_versions
+ observatorio | idx_historical_events_time      | index | observatorio | historical_events
+ observatorio | idx_poll_log_polled_at          | index | observatorio | poll_log
+ observatorio | poll_exclusions_pkey            | index | observatorio | poll_exclusions
+ observatorio | poll_log_pkey                   | index | observatorio | poll_log
+ observatorio | quarantine_records_pkey         | index | observatorio | quarantine_records
+ observatorio | raw_payloads_pkey               | index | observatorio | raw_payloads
+ observatorio | schema_migrations_pkey          | index | observatorio | schema_migrations
+ observatorio | uq_quarantine_kafka_record      | index | observatorio | quarantine_records
+(19 rows)
+
+ eventos_actuales | versiones | cuarentena 
+------------------+-----------+------------
+              178 |       180 |          0
+(1 row)
+

@@ -1,0 +1,2 @@
+INFO:__main__:Acquired 18302 unique events from 12 queries (0 executed, 12 reused).
+INFO:__main__:Loaded into PostgreSQL: {'queries': 12, 'events': 18302}
