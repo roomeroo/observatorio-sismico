@@ -6,7 +6,7 @@ Panel publicado: <https://adrian-observatorio-sismico.netlify.app>
 
 <img src="docs/capturas/02-panel-vivo.png" width="900" alt="Panel en vivo">
 
-> Esta página está pensada como presentación: una idea por diapositiva. El texto para contarla está en [docs/guion.md](docs/guion.md).
+> Esta página está pensada como presentación: una idea por diapositiva.
 
 ---
 
@@ -349,6 +349,5 @@ Reproducción: `docker compose run --rm producer python -m observatorio.replay -
 | [analisis](docs/analisis.md) | 3 conclusiones con consultas |
 | [complejidad](docs/complejidad.md) · [costes](docs/costes.md) | Reflexión |
 | [aceptacion](docs/aceptacion.md) | Matriz de las 11 pruebas |
-| [guion](docs/guion.md) | Texto para la defensa |
 
 Código: `backend/observatorio/` · `backend/tools/` · `backend/tests/` · `frontend/src/app/` · `frontend/cypress/`
