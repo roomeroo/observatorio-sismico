@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, effect, input, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, effect, input, output, signal } from '@angular/core';
 import * as L from 'leaflet';
 import type { FeatureCollection } from 'geojson';
 import { iso, type EventsResponse } from './api.service';
@@ -17,23 +17,32 @@ export function magRadius(mag: number | null): number {
   selector: 'app-quake-map',
   standalone: true,
   template: `
-    <div #host class="map" data-testid="map" aria-label="Mapa interactivo de terremotos"></div>
-    <div class="legend" data-testid="legend" aria-label="Leyenda del mapa">
-      <strong>Profundidad</strong>
-      <span><i class="dot" style="background:#e8a317"></i> &lt; 70 km</span>
-      <span><i class="dot" style="background:#e35b37"></i> 70–299,99 km</span>
-      <span><i class="dot" style="background:#7b3fb6"></i> ≥ 300 km</span>
-      <span><i class="dot" style="background:#64748b"></i> profundidad ND</span>
-      <span><i class="dot nd"></i> magnitud ND (anillo discontinuo)</span>
-      <small>Tamaño creciente con la magnitud (escala visual, no energía). <span data-testid="marker-count">{{ markerCount() }}</span> marcadores.</small>
+    <div class="wrap">
+      <div #host class="map" data-testid="map" aria-label="Mapa interactivo de terremotos"></div>
+      <div class="legend" data-testid="legend" aria-label="Leyenda del mapa">
+        <strong>Profundidad</strong>
+        <span><i class="dot" style="background:#e8a317"></i> &lt; 70 km</span>
+        <span><i class="dot" style="background:#e35b37"></i> 70–299 km</span>
+        <span><i class="dot" style="background:#7b3fb6"></i> ≥ 300 km</span>
+        <span><i class="dot" style="background:#64748b"></i> prof. ND</span>
+        <span><i class="dot nd"></i> magnitud ND</span>
+        <small>Tamaño ∝ magnitud (escala visual, no energía) · <span data-testid="marker-count">{{ markerCount() }}</span> marcadores</small>
+      </div>
     </div>
   `,
   styles: [
     `
-      :host { display: block; }
-      .map { height: 460px; border-radius: 8px; border: 1px solid #cbd5e1; }
-      .legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; align-items: center; padding: 0.5rem 0; font-size: 0.85rem; }
-      .dot { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; vertical-align: middle; }
+      :host { display: block; height: 100%; }
+      .wrap { position: relative; height: 100%; min-height: 420px; }
+      .map { position: absolute; inset: 0; border-radius: 12px; z-index: 0; }
+      .legend {
+        position: absolute; left: 10px; bottom: 10px; z-index: 500; max-width: calc(100% - 20px);
+        display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; align-items: center; padding: 0.4rem 0.65rem;
+        font-size: 0.75rem; background: color-mix(in srgb, var(--surface) 92%, transparent);
+        border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); backdrop-filter: blur(4px);
+      }
+      .legend small { flex-basis: 100%; color: var(--muted); }
+      .dot { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; vertical-align: middle; }
       .dot.nd { background: #fff; border: 2px dashed #334155; box-sizing: border-box; }
     `,
   ],
@@ -41,17 +50,25 @@ export function magRadius(mag: number | null): number {
 export class QuakeMapComponent implements AfterViewInit, OnDestroy {
   @ViewChild('host', { static: true }) private host!: ElementRef<HTMLDivElement>;
   readonly events = input<EventsResponse | null>(null);
+  readonly selectedId = input<string | null>(null);
+  readonly selected = output<string>();
   readonly markerCount = signal(0);
 
   private map?: L.Map;
   private layer = L.layerGroup();
   private markers = new Map<string, L.CircleMarker>();
+  private styles = new Map<string, L.CircleMarkerOptions>();
   private ready = signal(false);
+  private highlighted?: string;
 
   constructor() {
     effect(() => {
       const data = this.events();
       if (this.ready()) this.render(data);
+    });
+    effect(() => {
+      const id = this.selectedId();
+      if (this.ready()) this.focus(id);
     });
   }
 
@@ -62,11 +79,13 @@ export class QuakeMapComponent implements AfterViewInit, OnDestroy {
       noWrap: true,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.map);
-    const borders = L.geoJSON(undefined, { style: { color: '#334155', weight: 1, fill: false } }).addTo(this.map);
+    const borders = L.geoJSON(undefined, { style: { color: '#64748b', weight: 1, fill: false } }).addTo(this.map);
     this.layer.addTo(this.map);
-    L.control.layers({ OpenStreetMap: base }, { 'Países (Natural Earth)': borders, Terremotos: this.layer }).addTo(this.map);
+    L.control.layers({ OpenStreetMap: base }, { 'Países (Natural Earth)': borders, Terremotos: this.layer }, { position: 'topright' }).addTo(this.map);
     this.map.attributionControl.addAttribution('Fronteras: Natural Earth · Datos: USGS');
     this.ready.set(true);
+    // The container is sized by the CSS grid after first paint.
+    setTimeout(() => this.map?.invalidateSize(), 0);
     try {
       const response = await fetch('datos/paises.geojson');
       if (response.ok) borders.addData((await response.json()) as FeatureCollection);
@@ -93,11 +112,13 @@ export class QuakeMapComponent implements AfterViewInit, OnDestroy {
       const style: L.CircleMarkerOptions = nd
         ? { radius: magRadius(null), color: '#334155', fillColor: '#ffffff', fillOpacity: 0.9, weight: 2, dashArray: '3 3' }
         : { radius: magRadius(p.mag), color, fillColor: color, fillOpacity: 0.75, weight: 1, dashArray: undefined };
+      this.styles.set(id, style);
       let marker = this.markers.get(id);
       if (marker) {
-        marker.setLatLng([lat, lon]).setStyle(style).setRadius(style.radius!);
+        marker.setLatLng([lat, lon]).setStyle(id === this.highlighted ? this.hi(style) : style).setRadius(style.radius!);
       } else {
         marker = L.circleMarker([lat, lon], style).addTo(this.layer);
+        marker.on('click', () => this.selected.emit(id));
         this.markers.set(id, marker);
       }
       marker.unbindPopup().bindPopup(this.card(id, p, depth));
@@ -106,9 +127,31 @@ export class QuakeMapComponent implements AfterViewInit, OnDestroy {
       if (!seen.has(id)) {
         this.layer.removeLayer(marker);
         this.markers.delete(id);
+        this.styles.delete(id);
       }
     }
     this.markerCount.set(this.markers.size);
+  }
+
+  private hi(style: L.CircleMarkerOptions): L.CircleMarkerOptions {
+    return { ...style, weight: 3, color: '#2563eb', fillOpacity: 1 };
+  }
+
+  private focus(id: string | null): void {
+    if (this.highlighted) {
+      const old = this.markers.get(this.highlighted);
+      const style = this.styles.get(this.highlighted);
+      if (old && style) old.setStyle(style);
+    }
+    this.highlighted = undefined;
+    if (!id) return;
+    const marker = this.markers.get(id);
+    const style = this.styles.get(id);
+    if (!marker || !style || !this.map) return;
+    this.highlighted = id;
+    marker.setStyle(this.hi(style)).bringToFront();
+    this.map.flyTo(marker.getLatLng(), Math.max(this.map.getZoom(), 4), { duration: 0.6 });
+    marker.openPopup();
   }
 
   private card(id: string, p: NonNullable<EventsResponse['features'][number]['properties']>, depth: number | undefined): HTMLElement {
