@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { iso, type EventsResponse } from './api.service';
 
 type SortKey = 'time' | 'mag' | 'depth';
@@ -26,7 +26,7 @@ type SortKey = 'time' | 'mag' | 'depth';
         </thead>
         <tbody>
           @for (r of page(); track r.id) {
-            <tr [attr.data-id]="r.id">
+            <tr [attr.data-id]="r.id" [class.selected]="r.id === selectedId()" tabindex="0" (click)="select.emit(r.id)" (keydown.enter)="select.emit(r.id)" [attr.aria-selected]="r.id === selectedId()">
               <td>{{ iso(r.time) }}</td>
               <td [class.nd]="r.mag === null">{{ r.mag === null ? 'ND' : r.mag }}</td>
               <td>{{ r.depth === null ? 'ND' : r.depth }}</td>
@@ -50,13 +50,18 @@ type SortKey = 'time' | 'mag' | 'depth';
     `
       .table-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
       h3 { margin: 0; }
-      .sort button, .pager button { margin-right: 0.3rem; padding: 0.2rem 0.6rem; border: 1px solid #94a3b8; border-radius: 4px; background: #fff; cursor: pointer; }
-      .sort button.active { background: #1e3a8a; color: #fff; }
+      .sort button, .pager button { margin-right: 0.3rem; padding: 0.2rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; }
+      .sort button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+      tbody tr { cursor: pointer; }
+      tbody tr:hover { background: var(--surface-2); }
+      tbody tr.selected { background: var(--accent-soft); }
       .scroll { overflow-x: auto; }
       table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-      th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
-      td.nd { color: #475569; font-style: italic; }
-      .empty { color: #64748b; }
+      th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+      td.nd { color: var(--muted); font-style: italic; }
+      th { position: sticky; top: 0; background: var(--surface); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+      .scroll { max-height: 380px; overflow: auto; }
+      .empty { color: var(--muted); }
       .pager { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
       .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     `,
@@ -64,6 +69,8 @@ type SortKey = 'time' | 'mag' | 'depth';
 })
 export class EventsTableComponent {
   readonly events = input<EventsResponse | null>(null);
+  readonly selectedId = input<string | null>(null);
+  readonly select = output<string>();
   readonly pageSize = 25;
   readonly iso = iso;
   readonly keys: { key: SortKey; label: string }[] = [

@@ -52,7 +52,30 @@ export class AppComponent implements OnInit, OnDestroy {
     return c.ratio === null ? 'ND' : `${c.ratio.toFixed(2)}×`;
   });
 
+  /** Event selected from the map or the table (they stay linked). */
+  readonly selectedId = signal<string | null>(null);
+  readonly selectedFeature = computed(() => {
+    const id = this.selectedId();
+    return id ? (this.snapshot()?.events.features.find((f) => String(f.id) === id) ?? null) : null;
+  });
+  readonly theme = signal<'light' | 'dark'>('light');
+  readonly health = computed<'ok' | 'warn' | 'bad'>(() => {
+    if (this.api.failure() || this.api.configError()) return 'bad';
+    if (!this.snapshot()) return 'warn';
+    return this.api.ingestionOld() ? 'warn' : 'ok';
+  });
+  readonly healthLabel = computed(() => ({ ok: 'Operativo', warn: this.snapshot() ? 'Datos desactualizados' : 'Conectando', bad: 'Sin conexión' })[this.health()]);
+  /** Widths (%) for the "last 24 h vs 2025 daily mean" comparison bars. */
+  readonly comparison = computed(() => {
+    const c = this.snapshot()?.stats.comparison;
+    if (!c) return null;
+    const max = Math.max(c.last_24h_count, c.historical_daily_mean, 1);
+    return { last: (c.last_24h_count / max) * 100, mean: (c.historical_daily_mean / max) * 100 };
+  });
+  readonly chartTab = signal<'time' | 'place' | 'dist'>('time');
+
   async ngOnInit(): Promise<void> {
+    this.initTheme();
     this.clock = setInterval(() => this.now.set(Date.now()), 15_000);
     void this.loadCatalog();
     await this.api.start();
@@ -93,4 +116,21 @@ export class AppComponent implements OnInit, OnDestroy {
     this.api.setFilters({ range: '24h', start: '', end: '', minMag: null, country: '', subregion: '' });
   }
   retry(): void { this.api.retryNow(); }
+  onSelect(id: string): void { this.selectedId.set(id); }
+
+  private initTheme(): void {
+    let saved: string | null = null;
+    try { saved = localStorage.getItem('theme'); } catch { /* storage may be blocked */ }
+    const dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    this.applyTheme(dark ? 'dark' : 'light');
+  }
+  toggleTheme(): void {
+    const next = this.theme() === 'dark' ? 'light' : 'dark';
+    this.applyTheme(next);
+    try { localStorage.setItem('theme', next); } catch { /* ignore */ }
+  }
+  private applyTheme(t: 'light' | 'dark'): void {
+    this.theme.set(t);
+    document.documentElement.setAttribute('data-theme', t);
+  }
 }

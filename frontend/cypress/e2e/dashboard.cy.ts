@@ -214,6 +214,48 @@ describe('Observatorio dashboard', () => {
     cy.get('[data-testid=status-panel]').should('contain.text', 'Carga de la reproducción');
   });
 
+  it('links table and map: selecting a row shows the event card and highlights the row', () => {
+    cy.get('[data-testid=selected-event]').should('not.exist');
+    cy.get('[data-testid=events-table] tr[data-id=q3]').click();
+    cy.get('[data-testid=selected-event]').should('be.visible').and('contain.text', 'Lugar q3').and('contain.text', 'Chile');
+    cy.get('[data-testid=events-table] tr[data-id=q3]').should('have.class', 'selected');
+    cy.get('[data-testid=events-table] tr[data-id=q5]').click();
+    cy.get('[data-testid=selected-event]').should('contain.text', 'ND').and('contain.text', 'Sin país asignado');
+    cy.get('[data-testid=selected-event] button').click();
+    cy.get('[data-testid=selected-event]').should('not.exist');
+  });
+
+  it('switches theme and shows the health pill', () => {
+    cy.get('[data-testid=health-pill]').should('contain.text', 'Operativo');
+    cy.get('[data-testid=theme-toggle]').click();
+    cy.document().its('documentElement').invoke('getAttribute', 'data-theme').should('match', /dark|light/);
+    cy.get('[data-testid=theme-toggle]').click();
+  });
+
+  it('keeps every chart usable through the tabs', () => {
+    cy.get('[data-testid=chart-hourly]').should('be.visible');
+    cy.get('[data-testid=chart-country]').should('not.be.visible');
+    cy.contains('[role=tab]', 'Por lugar').click();
+    cy.get('[data-testid=chart-country]').should('be.visible');
+    cy.contains('[role=tab]', 'Distribuciones').click();
+    cy.get('[data-testid=chart-magnitude]').should('be.visible');
+    cy.get('[data-testid=chart-depth]').should('be.visible');
+  });
+
+  (Cypress.env('SHOTS') ? it : it.skip)('captures screenshots', () => {
+    cy.get('[data-testid=marker-count]').should('have.text', '6');
+    cy.get('[data-testid=events-table] tr[data-id=q1]').click();
+    cy.wait(1200);
+    cy.screenshot('desktop-light', { capture: 'fullPage' });
+    cy.get('[data-testid=theme-toggle]').click();
+    cy.contains('[role=tab]', 'Distribuciones').click();
+    cy.wait(300);
+    cy.screenshot('desktop-dark', { capture: 'fullPage' });
+    cy.viewport(390, 844);
+    cy.wait(500);
+    cy.screenshot('mobile-dark', { capture: 'fullPage' });
+  });
+
   it('never overlaps requests: a slow API gets one poll at a time', () => {
     let inflight = 0;
     let maxInflight = 0;
