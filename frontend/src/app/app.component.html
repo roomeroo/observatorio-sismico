@@ -124,11 +124,11 @@
             <h2>Evento seleccionado</h2>
             <button type="button" class="ghost" (click)="selectedId.set(null)" aria-label="Cerrar selección">✕</button>
           </div>
-          <p class="mag" [class.nd]="f.properties.mag === null">M {{ f.properties.mag === null ? 'ND' : f.properties.mag }}<small>{{ f.properties.magType }}</small></p>
+          <p class="mag" [class.nd]="f.properties.mag === null">M {{ num(f.properties.mag, 2) }}<small>{{ f.properties.magType }}</small></p>
           <p class="place">{{ f.properties.place ?? 'Sin descripción' }}</p>
           <dl>
             <div><dt>Fecha UTC</dt><dd>{{ iso(f.properties.time) }}</dd></div>
-            <div><dt>Profundidad</dt><dd>{{ f.properties.depth === null ? 'ND' : f.properties.depth + ' km' }}</dd></div>
+            <div><dt>Profundidad</dt><dd>{{ f.properties.depth === null ? 'ND' : num(f.properties.depth) + ' km' }}</dd></div>
             <div><dt>País</dt><dd>{{ f.properties.country_name ?? 'Sin país asignado' }}</dd></div>
             <div><dt>ID</dt><dd>{{ f.id }}</dd></div>
           </dl>

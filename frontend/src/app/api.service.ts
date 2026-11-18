@@ -8,6 +8,11 @@ export function iso(ms: number | null | undefined): string {
   return typeof ms === 'number' && Number.isFinite(ms) ? new Date(ms).toISOString() : 'ND';
 }
 
+/** Round for display (USGS floats like 10.7399997711182 are noise); ND when unknown. */
+export function num(value: number | null | undefined, digits = 1): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(Number(value.toFixed(digits))) : 'ND';
+}
+
 export interface EventProps {
   time: number | null;
   updated: number;

@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { ApiService, EVENTS_LIMIT, iso } from './api.service';
+import { ApiService, EVENTS_LIMIT, iso, num } from './api.service';
 import { Bar, BarChartComponent } from './bar-chart.component';
 import { EventsTableComponent } from './events-table.component';
 import { QuakeMapComponent } from './quake-map.component';
@@ -17,6 +17,7 @@ interface Option { value: string; label: string }
 export class AppComponent implements OnInit, OnDestroy {
   readonly api = inject(ApiService);
   readonly iso = iso;
+  readonly num = num;
   readonly filters = this.api.filters;
   readonly snapshot = this.api.snapshot;
   readonly eventsLimit = EVENTS_LIMIT;

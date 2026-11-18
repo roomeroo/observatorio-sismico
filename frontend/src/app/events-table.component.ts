@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { iso, type EventsResponse } from './api.service';
+import { iso, num, type EventsResponse } from './api.service';
 
 type SortKey = 'time' | 'mag' | 'depth';
 
@@ -28,8 +28,8 @@ type SortKey = 'time' | 'mag' | 'depth';
           @for (r of page(); track r.id) {
             <tr [attr.data-id]="r.id" [class.selected]="r.id === selectedId()" tabindex="0" (click)="select.emit(r.id)" (keydown.enter)="select.emit(r.id)" [attr.aria-selected]="r.id === selectedId()">
               <td>{{ iso(r.time) }}</td>
-              <td [class.nd]="r.mag === null">{{ r.mag === null ? 'ND' : r.mag }}</td>
-              <td>{{ r.depth === null ? 'ND' : r.depth }}</td>
+              <td [class.nd]="r.mag === null">{{ num(r.mag, 2) }}</td>
+              <td>{{ num(r.depth) }}</td>
               <td [class.nd]="!r.countryId">{{ r.country }}</td>
               <td>{{ r.place ?? 'Sin descripción' }}</td>
               <td>{{ r.id }}</td>
@@ -73,6 +73,7 @@ export class EventsTableComponent {
   readonly select = output<string>();
   readonly pageSize = 25;
   readonly iso = iso;
+  readonly num = num;
   readonly keys: { key: SortKey; label: string }[] = [
     { key: 'time', label: 'Fecha' },
     { key: 'mag', label: 'Magnitud' },

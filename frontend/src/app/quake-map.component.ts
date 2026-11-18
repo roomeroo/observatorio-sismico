@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, effect, input, output, signal } from '@angular/core';
 import * as L from 'leaflet';
 import type { FeatureCollection } from 'geojson';
-import { iso, type EventsResponse } from './api.service';
+import { iso, num, type EventsResponse } from './api.service';
 
 export const DEPTH_COLORS = { shallow: '#e8a317', mid: '#e35b37', deep: '#7b3fb6', unknown: '#64748b' } as const;
 
@@ -159,8 +159,8 @@ export class QuakeMapComponent implements AfterViewInit, OnDestroy {
     box.className = 'quake-card';
     const rows: [string, string][] = [
       ['Lugar', p.place ?? 'Sin descripción'],
-      ['Magnitud', p.mag === null ? 'ND' : `${p.mag}${p.magType ? ' ' + p.magType : ''}`],
-      ['Profundidad', typeof depth === 'number' ? `${depth} km` : 'ND'],
+      ['Magnitud', p.mag === null ? 'ND' : `${num(p.mag, 2)}${p.magType ? ' ' + p.magType : ''}`],
+      ['Profundidad', typeof depth === 'number' ? `${num(depth)} km` : 'ND'],
       ['Fecha UTC', iso(p.time)],
       ['País', p.country_name ?? 'Sin país asignado'],
       ['ID', id],
