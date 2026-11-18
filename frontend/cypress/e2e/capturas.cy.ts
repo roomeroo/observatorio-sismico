@@ -24,6 +24,7 @@ const run = Cypress.env('CAPTURAS');
   });
 
   it('en vivo, filtros, gráficos, tabla y ficha', () => {
+    cy.get('.topbar').invoke('css', 'position', 'static'); // so the sticky header does not cover element captures
     cy.screenshot('02-panel-vivo', { capture: 'viewport', overwrite: true });
 
     cy.get('[data-testid=total-count]').invoke('text').then((before) => {
