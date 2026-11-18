@@ -1,0 +1,11 @@
+# Netlify hosts only the Angular dashboard. The Python backend runs in Docker Compose.
+[build]
+  base = "frontend"
+  # npm ci first: fresh checkouts without installed packages fail with "ng: not found"
+  command = "npm ci && npm run build"
+  publish = "dist/observatorio/browser"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Cypress is only for local e2e tests; skip its large binary download
+  CYPRESS_INSTALL_BINARY = "0"
