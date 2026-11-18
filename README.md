@@ -177,7 +177,7 @@ Razonamiento a **100 millones de filas:** sin índice una búsqueda tardaría va
 
 ## 3. Pruebas de aceptación del enunciado (las 11)
 
-Matriz completa con pasos, resultado esperado, resultado observado y evidencia en [docs/aceptacion.md](docs/aceptacion.md). Resumen: evento nuevo, mismo mensaje repetido, versión posterior, versión antigua después, magnitud nula, coordenadas inválidas, evento marítimo, reinicio del consumidor, túnel cerrado, túnel reabierto y reproducción histórica. **Las 11 están cubiertas** por tests automáticos (114 de backend con PostgreSQL real, 6 unitarios y 9 e2e del frontend) y por la demostración real con Kafka y ngrok.
+Matriz completa con pasos, resultado esperado, resultado observado y evidencia en [docs/aceptacion.md](docs/aceptacion.md). Resumen: evento nuevo, mismo mensaje repetido, versión posterior, versión antigua después, magnitud nula, coordenadas inválidas, evento marítimo, reinicio del consumidor, túnel cerrado, túnel reabierto y reproducción histórica. **Las 11 están cubiertas** por tests automáticos (115 de backend con PostgreSQL real, 6 unitarios y 9 e2e del frontend) y por la demostración real con Kafka y ngrok.
 
 ---
 
@@ -202,7 +202,7 @@ docker compose run --rm -v "<ruta-absoluta>/backend/data:/app/data" producer \
 Pruebas:
 
 ```bash
-cd backend && python -m unittest discover -s tests -t tests     # 114 tests (PostgreSQL real si hay POSTGRES_*)
+cd backend && python -m unittest discover -s tests -t tests     # 115 tests (PostgreSQL real si hay POSTGRES_*)
 cd frontend && npm test                                          # sondeo y filtros
 npm start & npx cypress run                                      # e2e (si falla: unset ELECTRON_RUN_AS_NODE)
 ```
@@ -229,27 +229,28 @@ Panel en local: `cd frontend && npm install && npm start` → <http://localhost:
 
 ---
 
-## 6. Capturas recomendadas (para la memoria y la defensa)
+## 6. Capturas y salidas de evidencia (ya generadas en `docs/capturas/`)
 
-Guárdalas en `docs/capturas/` con estos nombres:
+Las imágenes se tomaron contra el panel **publicado en Netlify con el backend real** (script `frontend/cypress/e2e/capturas.cy.ts`). Las salidas de terminal están como texto.
 
-| Archivo | Qué captura | Para qué criterio |
+| Archivo | Qué muestra | Criterio |
 |---|---|---|
-| `01-compose-ps.png` | `docker compose --profile tunnel ps` con todo `healthy` | Arquitectura |
-| `02-panel-vivo.png` | Panel completo en vivo (mapa, KPIs, estado «Operativo») | Análisis |
-| `03-filtro-antes.png` / `04-filtro-despues.png` | Panel sin filtro y con magnitud mín. 5 | Análisis (filtros coherentes) |
-| `05-graficos.png` | Pestañas «Por hora», «Por lugar» y «Distribuciones» | Análisis |
-| `06-tabla-nd.png` | Tabla con una fila de magnitud «ND» y otra «Sin país asignado» | Calidad / Modelado |
-| `07-ficha-evento.png` | Evento seleccionado con su ficha | Análisis |
-| `08-historico.png` | Salida de `observatorio.historical` (18.302 eventos, 12 consultas) | Extracción |
-| `09-sql-calidad.png` | Resultado de `tools/quality.py` (antes/después) | Calidad |
-| `10-sql-modelo.png` | `\d observatorio.current_events` y `\di` (claves e índices) | Modelado |
-| `11-explain.png` | `EXPLAIN` con y sin índice (salida de `benchmark.py`) | Reflexión |
-| `12-replay.png` | Panel con la etiqueta REPRODUCCIÓN | Pruebas de aceptación |
-| `13-banner-fallo.png` / `14-recuperado.png` | Banner con el túnel cerrado y tras reabrirlo | Pruebas de aceptación |
-| `15-ngrok-4040.png` | Interfaz de ngrok con la URL pública (tapa el token) | Despliegue |
-| `16-netlify-deploy.png` | Despliegue correcto en Netlify | Despliegue |
-| `17-tests.png` | Salida de los 114 tests en verde | Todas |
+| `01-compose-ps.txt` | Servicios Docker `healthy` y túnel activo | Arquitectura |
+| `02-panel-vivo.png` | Panel en vivo: mapa, KPIs, comparación 24 h vs 2025, estado «Operativo» | Análisis |
+| `03-filtro-antes.png` / `04-filtro-despues.png` | Sin filtro y con magnitud mín. 5: todo cambia a la vez (incluida la media de 2025 con el mismo M ≥ 5) | Análisis |
+| `05-graficos-por-hora.png`, `-por-lugar.png`, `-distribuciones.png` | Ventanas horarias, países/subregiones con «Sin país asignado», distribuciones con ND | Análisis |
+| `06-tabla-sin-pais.png` | Tabla filtrada por «Sin país asignado» | Calidad / Modelado |
+| `07-ficha-evento.png` | Evento seleccionado enlazado con el mapa | Análisis |
+| `08-historico.txt` | 18.302 eventos, 12 consultas (reutilizadas sin red) | Extracción |
+| `09-calidad-script.md` | Salida de `tools/quality.py` (antes/después, 6 dimensiones) | Calidad |
+| `10-sql-modelo.txt` | `\d current_events`, índices y recuentos | Modelado |
+| `12-replay.png` | Etiqueta REPRODUCCIÓN, 23 eventos únicos | Pruebas de aceptación |
+| `13-banner-fallo.png` / `14-recuperado.png` | Túnel cerrado (banner con la última lectura) y recuperación automática | Pruebas de aceptación |
+| `17-tests.txt` | 115 tests de backend (PostgreSQL real) y 6 unitarios del frontend, todos en verde | Todas |
+
+Para el criterio de **Reflexión**, los `EXPLAIN` con y sin índice y las medidas están en [docs/complejidad.md](docs/complejidad.md). Si el profesor pide capturas «visuales» de terminal, basta con ejecutar el comando correspondiente y capturar la pantalla.
+
+Para regenerar las imágenes: `CYPRESS_CAPTURAS=1 npx cypress run --spec cypress/e2e/capturas.cy.ts --config baseUrl=<url-del-panel>` desde `frontend/` (con la pila y el túnel en marcha).
 
 ---
 
@@ -258,7 +259,7 @@ Guárdalas en `docs/capturas/` con estos nombres:
 ```
 backend/observatorio/   producer, consumer, geo, validation, persistence, api, queries, historical, replay, migrations/
 backend/tools/          quality.py (calidad), benchmark.py (complejidad)
-backend/tests/          114 tests (unitarios e integración con PostgreSQL)
+backend/tests/          115 tests (unitarios e integración con PostgreSQL)
 frontend/src/app/       panel Angular: mapa, gráficos SVG, tabla, servicio de API con sondeo serializado
 frontend/cypress/e2e/   pruebas e2e (API simulada y túnel real)
 docs/                   diccionario, procedencia, calidad, modelo, complejidad, costes, análisis, aceptación
